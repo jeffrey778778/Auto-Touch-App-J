@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">PrecisionTap</string>
+    <string name="accessibility_service_label">PrecisionTap 자동 터치</string>
+    <string name="accessibility_service_description">정해진 시간에 지정 좌표를 정밀 터치합니다.</string>
+</resources>
