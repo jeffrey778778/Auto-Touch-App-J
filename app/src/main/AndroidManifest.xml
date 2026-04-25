@@ -1,14 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- 다른 앱 위에 그리기 -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <!-- 포그라운드 서비스 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <!-- Android 13+ 알림 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- 정확한 알람 (필요 시) -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
@@ -21,6 +17,7 @@
 
         <activity
             android:name=".MainActivity"
+            android:launchMode="singleTop"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -28,7 +25,6 @@
             </intent-filter>
         </activity>
 
-        <!-- AccessibilityService: 다른 앱 위에서 실제 터치 수행 -->
         <service
             android:name=".AutoTapAccessibilityService"
             android:label="@string/accessibility_service_label"
@@ -42,7 +38,6 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
-        <!-- Foreground Service + 플로팅 오버레이 -->
         <service
             android:name=".OverlayService"
             android:foregroundServiceType="specialUse"
@@ -50,6 +45,15 @@
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="precision_tap_timer" />
+        </service>
+
+        <service
+            android:name=".CoordinatePickerService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="coordinate_picker" />
         </service>
     </application>
 </manifest>

@@ -30,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var etInterval: EditText
     private lateinit var btnA11y: Button
     private lateinit var btnOverlay: Button
+    private lateinit var btnPickCoord: Button
     private lateinit var btnStart: Button
     private lateinit var tvStatus: TextView
 
@@ -47,6 +48,7 @@ class MainActivity : AppCompatActivity() {
         etInterval = findViewById(R.id.etInterval)
         btnA11y = findViewById(R.id.btnA11y)
         btnOverlay = findViewById(R.id.btnOverlay)
+        btnPickCoord = findViewById(R.id.btnPickCoord)
         btnStart = findViewById(R.id.btnStart)
         tvStatus = findViewById(R.id.tvStatus)
 
@@ -60,7 +62,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnA11y.setOnClickListener {
-            // 접근성 설정 화면으로 이동 → 직접 활성화 필요
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
 
@@ -74,11 +75,42 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        btnPickCoord.setOnClickListener { startCoordPicker() }
         btnStart.setOnClickListener { startScheduledTap() }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // CoordinatePickerService 가 저장한 좌표가 있으면 자동 입력
+        val prefs = getSharedPreferences(CoordinatePickerService.PREFS_NAME, MODE_PRIVATE)
+        val pickedAt = prefs.getLong(CoordinatePickerService.KEY_PICKED_AT, 0L)
+        // 30초 이내에 잡힌 좌표만 사용 (오래된 값 무시)
+        if (pickedAt > 0 && System.currentTimeMillis() - pickedAt < 30_000L) {
+            val x = prefs.getFloat(CoordinatePickerService.KEY_PICKED_X, -1f)
+            val y = prefs.getFloat(CoordinatePickerService.KEY_PICKED_Y, -1f)
+            if (x >= 0 && y >= 0) {
+                etX.setText(x.toInt().toString())
+                etY.setText(y.toInt().toString())
+                tvStatus.text = "좌표 입력됨: (${x.toInt()}, ${y.toInt()})"
+            }
+            // 한 번 사용했으면 클리어
+            prefs.edit().clear().apply()
+        }
+    }
+
+    private fun startCoordPicker() {
+        if (!Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "오버레이 권한 먼저 허용", Toast.LENGTH_SHORT).show(); return
+        }
+        Toast.makeText(this,
+            "5초 후 좌표 잡기 시작. 그 동안 대상 앱으로 이동하세요.",
+            Toast.LENGTH_LONG).show()
+        startForegroundService(Intent(this, CoordinatePickerService::class.java))
+        // 백그라운드로 보내서 사용자가 다른 앱으로 이동 가능하게
+        moveTaskToBack(true)
+    }
+
     private fun startScheduledTap() {
-        // 권한 체크
         if (!Settings.canDrawOverlays(this)) {
             Toast.makeText(this, "오버레이 권한 먼저 허용", Toast.LENGTH_SHORT).show(); return
         }
@@ -100,7 +132,6 @@ class MainActivity : AppCompatActivity() {
         val repeat = (etRepeat.text.toString().toIntOrNull() ?: 1).coerceAtLeast(1)
         val interval = (etInterval.text.toString().toLongOrNull() ?: 0L).coerceAtLeast(0L)
 
-        // 목표 시각: 오늘 해당 시각이 이미 지났으면 다음날
         val now = System.currentTimeMillis()
         val target = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, h)
@@ -111,7 +142,6 @@ class MainActivity : AppCompatActivity() {
         if (target.timeInMillis <= now) target.add(Calendar.DAY_OF_MONTH, 1)
         val targetMillis = target.timeInMillis
 
-        // 오버레이 + 정밀 타이머 시작
         val intent = Intent(this, OverlayService::class.java).apply {
             putExtra(OverlayService.EXTRA_TARGET_MILLIS, targetMillis)
             putExtra(OverlayService.EXTRA_X, x)
